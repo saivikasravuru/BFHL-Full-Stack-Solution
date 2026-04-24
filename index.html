@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>BFHL Hierarchy Builder</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #0f172a;
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+
+    .container {
+      background: #1e293b;
+      padding: 30px;
+      border-radius: 12px;
+      width: 500px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 80px;
+      border-radius: 8px;
+      border: none;
+      padding: 10px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #3b82f6;
+      border: none;
+      border-radius: 8px;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: #2563eb;
+    }
+
+    .output {
+      margin-top: 20px;
+      background: #020617;
+      padding: 15px;
+      border-radius: 8px;
+      max-height: 300px;
+      overflow-y: auto;
+      font-size: 13px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 3px 8px;
+      margin: 3px;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+
+    .invalid { background: #ef4444; }
+    .duplicate { background: #f59e0b; }
+    .valid { background: #22c55e; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>🌳 Hierarchy Builder</h1>
+
+  <textarea id="input" placeholder="Enter nodes (e.g. A->B, A->C, B->D)"></textarea>
+
+  <button onclick="send()">Submit</button>
+
+  <div id="tags"></div>
+
+  <div class="output" id="output"></div>
+</div>
+
+<script>
+async function send() {
+  const raw = document.getElementById("input").value;
+
+  const data = raw.split(",")
+    .map(x => x.trim())
+    .filter(x => x);
+
+  const output = document.getElementById("output");
+  const tagsDiv = document.getElementById("tags");
+
+  // Reset UI
+  output.innerText = "";
+  tagsDiv.innerHTML = "";
+
+  // Show tags
+  data.forEach(item => {
+    const span = document.createElement("span");
+    span.innerText = item;
+    span.className = "tag valid";
+    tagsDiv.appendChild(span);
+  });
+
+  // Step animations
+  await showStep("⏳ Processing input...");
+  await delay(800);
+
+  await showStep("🔍 Validating nodes...");
+  await delay(800);
+
+  await showStep("🌳 Building hierarchy...");
+  await delay(800);
+
+  try {
+    const res = await fetch("http://localhost:3000/bfhl", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ data })
+    });
+
+    const json = await res.json();
+
+    await showStep("✨ Final Result Ready!");
+    await delay(500);
+
+    // Highlight invalid & duplicates
+    json.invalid_entries.forEach(item => {
+      highlight(item, "invalid");
+    });
+
+    json.duplicate_edges.forEach(item => {
+      highlight(item, "duplicate");
+    });
+
+    // Typewriter effect for output
+    typeWriter(JSON.stringify(json, null, 2));
+
+  } catch (err) {
+    output.innerText = "❌ Error connecting to API";
+  }
+}
+
+// Delay helper
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Show step text
+async function showStep(text) {
+  const output = document.getElementById("output");
+  output.innerText = text;
+}
+
+// Typewriter animation
+function typeWriter(text) {
+  const output = document.getElementById("output");
+  output.innerText = "";
+  let i = 0;
+
+  function typing() {
+    if (i < text.length) {
+      output.innerText += text.charAt(i);
+      i++;
+      setTimeout(typing, 10);
+    }
+  }
+
+  typing();
+}
+
+// Highlight tags
+function highlight(value, className) {
+  const tags = document.querySelectorAll(".tag");
+  tags.forEach(tag => {
+    if (tag.innerText === value.trim()) {
+      tag.className = "tag " + className;
+    }
+  });
+}
+</script>
+
+</body>
+</html>
